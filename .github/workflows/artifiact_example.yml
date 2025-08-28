@@ -1,0 +1,63 @@
+name: CI (Create → Push → Download)
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  create-file:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create hello.txt
+        shell: cmd
+        run: |
+          mkdir artifact
+          echo Hello, world!> artifact\hello.txt
+          type artifact\hello.txt
+
+      # Upload as a *staging* artifact to pass to next job
+      - name: Upload staging artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-hello
+          path: artifact/hello.txt
+
+  publish-artifact:
+    runs-on: self-hosted
+    needs: create-file
+    steps:
+      - name: Download staging artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: staging-hello
+          path: stage
+
+      # Re-upload as the "final" artifact (simulates pushing to the artifact store)
+      - name: Publish final artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hello-world
+          path: stage/hello.txt
+          if-no-files-found: error
+          compression-level: 0
+
+  consume-artifact:
+    runs-on: self-hosted
+    needs: publish-artifact
+    steps:
+      - name: Download final artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: hello-world
+          path: final
+
+      - name: Display file content
+        shell: cmd
+        run: |
+          dir final
+          type final\hello.txt
