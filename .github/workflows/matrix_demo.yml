@@ -1,13 +1,14 @@
-name: Matrix Demo
+name: Multi-Stage Matrix Demo
 
 on: [push]
 
 jobs:
+  # Stage 1: Build (matrix across OS + Python versions)
   build:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest]
         python: [3.8, 3.9]
     steps:
       - name: Checkout
@@ -18,5 +19,21 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
-      - name: Print Environment
-        run: echo "Running on ${{ matrix.os }} with Python ${{ matrix.python }}"
+      - name: Run build
+        run: echo "Building on ${{ matrix.os }} with Python ${{ matrix.python }}"
+
+  # Stage 2: Test (runs only after build finishes)
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run tests
+        run: echo "Running tests after matrix build"
+
+  # Stage 3: Deploy (runs only after test finishes)
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy
+        run: echo "Deploying application"
